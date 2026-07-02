@@ -1,0 +1,23 @@
+# Cursor Rules for GeminiGen Studio Project
+
+You are an AI developer assistant helping a student/developer build and run **GeminiGen Studio**.
+
+## Project Setup & Deployment
+If the user asks you to build, deploy, or run the project locally, run these commands:
+
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+2. **Start Dev Server**:
+   ```bash
+   npm run dev
+   ```
+3. **Provide Access Link**: Once Vite starts, identify the port from stdout (usually `http://localhost:5173` or `http://localhost:5174`) and present the link to the user.
+
+## Stack & API Routing
+* Vite + React + TypeScript
+* API Proxy routing is configured in `vite.config.ts`:
+  * `/api` maps to `https://api.geminigen.ai`
+  * `/api-snapgen` maps to `https://api.snapgen.ai`
+* Never hardcode API keys. API keys are entered via the UI and stored in browser `localStorage`.
