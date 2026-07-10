@@ -26,6 +26,15 @@ export default function App() {
   });
   const [showKeyInput, setShowKeyInput] = useState(!apiKey);
   const [activeTab, setActiveTab] = useState<'video' | 'image' | 'style'>('video');
+  const [alertConfig, setAlertConfig] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title?: string;
+  } | null>(null);
+
+  const showAlert = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info', title?: string) => {
+    setAlertConfig({ message, type, title });
+  };
   
   // Tasks Queue
   const [tasks, setTasks] = useState<AnimationTask[]>([]);
@@ -206,7 +215,11 @@ export default function App() {
 
     const applied = Math.min(blocks.length, tasks.length);
     const extra = blocks.length - tasks.length;
-    alert(`✅ Промты распределены: ${applied} из ${tasks.length} кадров.${extra > 0 ? `\n⚠️ Лишних сцен: ${extra}` : ''}${tasks.length > blocks.length ? `\n⚠️ Кадров без промта: ${tasks.length - blocks.length}` : ''}`);
+    showAlert(
+      `Промты распределены: ${applied} из ${tasks.length} кадров.${extra > 0 ? `\n⚠️ Лишних сцен: ${extra}` : ''}${tasks.length > blocks.length ? `\n⚠️ Кадров без промта: ${tasks.length - blocks.length}` : ''}`,
+      'success',
+      'Распределение промтов'
+    );
   };
   // Submit Generation Request to API (uses CORS proxy on Vite)
   const submitTask = async (task: AnimationTask): Promise<string> => {
@@ -451,7 +464,7 @@ export default function App() {
   const downloadAllAsZip = async () => {
     const completedTasks = tasks.filter(t => t.status === 'completed' && t.videoUrl);
     if (completedTasks.length === 0) {
-      alert('Нет готовых видео для скачивания!');
+      showAlert('Нет готовых видео для скачивания!', 'warning', 'Скачивание архива');
       return;
     }
 
@@ -487,7 +500,7 @@ export default function App() {
       setTimeout(() => URL.revokeObjectURL(link.href), 100);
       setZipProgress('');
     } catch (err: any) {
-      alert(`Ошибка при создании архива: ${err.message}`);
+      showAlert(`Ошибка при создании архива: ${err.message}`, 'error', 'Ошибка');
     } finally {
       setIsZipping(false);
     }
@@ -587,10 +600,10 @@ export default function App() {
       </nav>
 
       {/* IMAGE GENERATION TAB */}
-      {activeTab === 'image' && <ImageGenerator apiKey={apiKey} />}
+      {activeTab === 'image' && <ImageGenerator apiKey={apiKey} onShowAlert={showAlert} />}
 
       {/* STYLE TRANSFER TAB */}
-      {activeTab === 'style' && <StyleTransfer apiKey={apiKey} />}
+      {activeTab === 'style' && <StyleTransfer apiKey={apiKey} onShowAlert={showAlert} />}
 
       {/* VIDEO ANIMATION TAB */}
       {activeTab === 'video' && (<>
@@ -1264,6 +1277,91 @@ export default function App() {
               }}
             >
               ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM ALERT MODAL */}
+      {alertConfig && (
+        <div 
+          className="custom-alert-overlay"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 99999
+          }} 
+          onClick={() => setAlertConfig(null)}
+        >
+          <div 
+            className="custom-alert-box"
+            style={{
+              background: '#111827',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '420px',
+              width: '90%',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px'
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: alertConfig.type === 'success' 
+                ? 'rgba(16, 185, 129, 0.12)' 
+                : alertConfig.type === 'error'
+                ? 'rgba(239, 68, 68, 0.12)'
+                : 'rgba(245, 158, 11, 0.12)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              color: alertConfig.type === 'success' 
+                ? '#10b981' 
+                : alertConfig.type === 'error'
+                ? '#ef4444'
+                : '#f59e0b',
+              fontSize: '24px',
+              fontWeight: 'bold'
+            }}>
+              {alertConfig.type === 'success' ? '✓' : alertConfig.type === 'error' ? '✕' : '⚠'}
+            </div>
+            
+            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
+              {alertConfig.title || (alertConfig.type === 'success' ? 'Успешно' : alertConfig.type === 'error' ? 'Ошибка' : 'Внимание')}
+            </h3>
+            
+            <div style={{ 
+              fontSize: '0.88rem', 
+              color: '#94a3b8', 
+              lineHeight: '1.5',
+              whiteSpace: 'pre-line',
+              textAlign: 'center'
+            }}>
+              {alertConfig.message}
+            </div>
+            
+            <button 
+              className="primary" 
+              style={{ minWidth: '120px', padding: '8px 16px', fontSize: '0.85rem', marginTop: '4px' }}
+              onClick={() => setAlertConfig(null)}
+            >
+              ОК
             </button>
           </div>
         </div>

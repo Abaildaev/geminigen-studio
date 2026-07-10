@@ -53,9 +53,10 @@ const OUTPUT_FORMATS: ImageOutputFormat[] = ['jpeg', 'png'];
 
 interface Props {
   apiKey: string;
+  onShowAlert: (message: string, type?: 'success' | 'error' | 'warning' | 'info', title?: string) => void;
 }
 
-export default function StyleTransfer({ apiKey }: Props) {
+export default function StyleTransfer({ apiKey, onShowAlert }: Props) {
   // Tasks Queue
   const [tasks, setTasks] = useState<StyleTransferTask[]>([]);
 
@@ -493,7 +494,7 @@ export default function StyleTransfer({ apiKey }: Props) {
   const downloadAllAsZip = async () => {
     const completedTasks = tasks.filter((t) => t.status === 'completed' && t.imageUrl);
     if (completedTasks.length === 0) {
-      alert('Нет готовых изображений для скачивания!');
+      onShowAlert('Нет готовых изображений для скачивания!', 'warning', 'Скачивание архива');
       return;
     }
 
@@ -529,7 +530,7 @@ export default function StyleTransfer({ apiKey }: Props) {
       setTimeout(() => URL.revokeObjectURL(link.href), 100);
       setZipProgress('');
     } catch (err: any) {
-      alert(`Ошибка: ${err.message}`);
+      onShowAlert(`Ошибка: ${err.message}`, 'error', 'Ошибка');
     } finally {
       setIsZipping(false);
     }
