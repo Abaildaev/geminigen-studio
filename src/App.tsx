@@ -640,7 +640,7 @@ export default function App() {
             width: '100%'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Модель по умолчанию</label>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Модель</label>
               <select 
                 value={globalModel} 
                 onChange={(e) => {
@@ -660,19 +660,19 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Формат сторон по умолчанию</label>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Формат сторон</label>
               <select 
                 value={globalAspectRatio} 
                 onChange={(e) => setGlobalAspectRatio(e.target.value as any)}
                 style={{ width: '100%' }}
               >
-                <option value="portrait">Вертикальный (Grok: portrait / Veo: 9:16)</option>
-                <option value="landscape">Горизонтальный (Grok: landscape / Veo: 16:9)</option>
+                <option value="portrait">Вертикальный (9:16)</option>
+                <option value="landscape">Горизонтальный (16:9)</option>
               </select>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Разрешение по умолчанию</label>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Разрешение</label>
               <select 
                 value={globalResolution} 
                 onChange={(e) => {
