@@ -28,16 +28,6 @@ import type {
 
 const IMAGE_MODELS: { value: ImageModel; label: string; desc: string }[] = [
   { value: 'nano-banana-pro', label: 'Nano Banana Pro', desc: 'Высокая точность, "мыслящая" модель' },
-  { value: 'nano-banana-2', label: 'Nano Banana 2', desc: 'Быстрая генерация, высокий объём' },
-  { value: 'imagen-4', label: 'Imagen 4', desc: 'Баланс скорости и качества, текстуры' },
-  { value: 'gpt-image-2', label: '👑 GPT Image 2 (Premium)', desc: 'Премиум генерация до 12K, режимы качества' },
-];
-
-const IMAGE_STYLES: ImageStyle[] = [
-  'None', '3D Render', 'Acrylic', 'Anime General', 'Creative', 'Dynamic',
-  'Fashion', 'Game Concept', 'Graphic Design 3D', 'Illustration',
-  'Photorealistic', 'Portrait', 'Portrait Cinematic', 'Portrait Fashion',
-  'Ray Traced', 'Stock Photo', 'Watercolor',
 ];
 
 const ASPECT_RATIOS: { value: ImageAspectRatio; label: string; icon: string }[] = [
@@ -46,12 +36,9 @@ const ASPECT_RATIOS: { value: ImageAspectRatio; label: string; icon: string }[] 
   { value: '9:16', label: '9:16', icon: '📱' },
   { value: '4:3', label: '4:3', icon: '📺' },
   { value: '3:4', label: '3:4', icon: '🖼️' },
-  { value: '21:9', label: '21:9', icon: '🎞️' },
-  { value: '3:2', label: '3:2', icon: '📷' },
-  { value: '2:3', label: '2:3', icon: '🤳' },
 ];
 
-const RESOLUTIONS: ImageResolution[] = ['1K', '2K', '4K', '8K', '10K', '12K'];
+const RESOLUTIONS: ImageResolution[] = ['1K', '2K', '4K'];
 const OUTPUT_FORMATS: ImageOutputFormat[] = ['jpeg', 'png'];
 
 interface Props {
@@ -63,13 +50,10 @@ export default function ImageGenerator({ apiKey }: Props) {
   const [tasks, setTasks] = useState<ImageGenTask[]>([]);
 
   // Global defaults
-  const [globalModel, setGlobalModel] = useState<ImageModel>('nano-banana-pro');
-  const [globalStyle, setGlobalStyle] = useState<ImageStyle>('Photorealistic');
+  const [globalModel] = useState<ImageModel>('nano-banana-pro');
   const [globalAspectRatio, setGlobalAspectRatio] = useState<ImageAspectRatio>('1:1');
   const [globalResolution, setGlobalResolution] = useState<ImageResolution>('1K');
   const [globalFormat, setGlobalFormat] = useState<ImageOutputFormat>('png');
-  const [globalGptMode, setGlobalGptMode] = useState<'low' | 'medium' | 'high'>('medium');
-  const [globalRefHistory, setGlobalRefHistory] = useState<string>('');
 
   // Batch prompts textarea
   const [batchPrompts, setBatchPrompts] = useState('');
@@ -111,11 +95,9 @@ export default function ImageGenerator({ apiKey }: Props) {
       prompt: '',
       model: globalModel,
       aspectRatio: globalAspectRatio,
-      style: globalStyle,
+      style: 'Photorealistic',
       outputFormat: globalFormat,
       resolution: globalResolution,
-      gptMode: globalModel === 'gpt-image-2' ? globalGptMode : undefined,
-      refHistory: globalModel === 'gpt-image-2' ? globalRefHistory : undefined,
       status: 'idle',
       progress: 0,
     };
@@ -131,11 +113,9 @@ export default function ImageGenerator({ apiKey }: Props) {
         prompt: '',
         model: globalModel,
         aspectRatio: globalAspectRatio,
-        style: globalStyle,
+        style: 'Photorealistic' as ImageStyle,
         outputFormat: globalFormat,
         resolution: globalResolution,
-        gptMode: globalModel === 'gpt-image-2' ? globalGptMode : undefined,
-        refHistory: globalModel === 'gpt-image-2' ? globalRefHistory : undefined,
         status: 'idle' as const,
         progress: 0,
       };
@@ -266,12 +246,9 @@ export default function ImageGenerator({ apiKey }: Props) {
           return {
             ...t,
             model: globalModel,
-            style: globalStyle,
             aspectRatio: globalAspectRatio,
             resolution: globalResolution,
             outputFormat: globalFormat,
-            gptMode: globalModel === 'gpt-image-2' ? globalGptMode : undefined,
-            refHistory: globalModel === 'gpt-image-2' ? globalRefHistory : undefined,
           };
         }
         return t;
@@ -284,31 +261,22 @@ export default function ImageGenerator({ apiKey }: Props) {
     if (!apiKey) throw new Error('API ключ не задан');
     if (!task.prompt.trim()) throw new Error('Промпт не может быть пустым');
 
-    const isGpt = task.model === 'gpt-image-2';
     addLog(task.id, `Подготовка запроса через модель ${task.model}...`);
 
     const formData = new FormData();
     formData.append('prompt', task.prompt);
     formData.append('aspect_ratio', task.aspectRatio);
-    formData.append('resolution', task.resolution || (isGpt ? '2K' : '1K'));
-
-    if (isGpt) {
-      formData.append('mode', task.gptMode || 'medium');
-      if (task.refHistory?.trim()) {
-        formData.append('ref_history', task.refHistory.trim());
-      }
-    } else {
-      formData.append('model', task.model);
-      formData.append('style', task.style);
-      formData.append('output_format', task.outputFormat);
-    }
+    formData.append('resolution', task.resolution || '1K');
+    formData.append('model', task.model);
+    formData.append('style', task.style);
+    formData.append('output_format', task.outputFormat);
 
     if (task.referenceFile) {
       formData.append('files', task.referenceFile, task.referenceFileName || 'reference.jpg');
       addLog(task.id, `Прикреплено реф-изображение: ${task.referenceFileName}`);
     }
 
-    const endpoint = isGpt ? '/api-snapgen/uapi/v1/imagen/gpt-image-2' : '/api/uapi/v1/generate_image';
+    const endpoint = '/api/uapi/v1/generate_image';
     addLog(task.id, `Отправка к ${endpoint}...`);
 
     const response = await fetch(endpoint, {
@@ -364,17 +332,15 @@ export default function ImageGenerator({ apiKey }: Props) {
   };
 
   // ---- Polling ----
-  const startPolling = (taskId: string, uuid: string, model: string) => {
+  const startPolling = (taskId: string, uuid: string, _model: string) => {
     if (activePolls.current[taskId]) {
       clearInterval(activePolls.current[taskId]);
     }
 
     addLog(taskId, `Опрос статуса каждые 4 сек для UUID: ${uuid}`);
-
-    const isGpt = model === 'gpt-image-2';
     const checkStatus = async () => {
       try {
-        const historyUrl = isGpt ? `/api-snapgen/uapi/v1/history/${uuid}` : `/api/uapi/v1/history/${uuid}`;
+        const historyUrl = `/api/uapi/v1/history/${uuid}`;
         const response = await fetch(historyUrl, {
           headers: { 'x-api-key': apiKey },
         });
@@ -605,64 +571,11 @@ export default function ImageGenerator({ apiKey }: Props) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-          {/* Model */}
-          <div className="img-field">
-            <label>Модель</label>
-            <select
-              value={globalModel}
-              onChange={(e) => {
-                const val = e.target.value as ImageModel;
-                setGlobalModel(val);
-                if (val !== 'gpt-image-2') {
-                  if (globalResolution === '8K' || globalResolution === '10K' || globalResolution === '12K') {
-                    setGlobalResolution('2K');
-                  }
-                  if (globalAspectRatio === '21:9' || globalAspectRatio === '3:2' || globalAspectRatio === '2:3') {
-                    setGlobalAspectRatio('1:1');
-                  }
-                }
-              }}
-            >
-              {IMAGE_MODELS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-            <span className="field-hint">{IMAGE_MODELS.find((m) => m.value === globalModel)?.desc}</span>
-          </div>
-
-          {/* Style (only if not GPT) */}
-          {globalModel !== 'gpt-image-2' && (
-            <div className="img-field">
-              <label>Стиль</label>
-              <select value={globalStyle} onChange={(e) => setGlobalStyle(e.target.value as ImageStyle)}>
-                {IMAGE_STYLES.map((s) => (
-                  <option key={s} value={s}>
-                    {s === 'None' ? 'Без стиля' : s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Quality Mode (only if GPT) */}
-          {globalModel === 'gpt-image-2' && (
-            <div className="img-field">
-              <label>Качество (GPT Mode)</label>
-              <select value={globalGptMode} onChange={(e) => setGlobalGptMode(e.target.value as any)}>
-                <option value="low">Low (Быстро & Дешево)</option>
-                <option value="medium">Medium (Сбалансировано)</option>
-                <option value="high">High (Наивысшее качество)</option>
-              </select>
-            </div>
-          )}
-
           {/* Aspect Ratio */}
           <div className="img-field">
             <label>Соотношение сторон</label>
             <div className="ratio-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-              {ASPECT_RATIOS.filter(r => globalModel === 'gpt-image-2' || !['21:9', '3:2', '2:3'].includes(r.value)).map((r) => (
+              {ASPECT_RATIOS.map((r) => (
                 <button
                   key={r.value}
                   className={`ratio-chip ${globalAspectRatio === r.value ? 'active' : ''}`}
@@ -680,7 +593,7 @@ export default function ImageGenerator({ apiKey }: Props) {
           <div className="img-field">
             <label>Разрешение</label>
             <div className="ratio-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-              {RESOLUTIONS.filter(r => globalModel === 'gpt-image-2' || !['8K', '10K', '12K'].includes(r)).map((r) => (
+              {RESOLUTIONS.map((r) => (
                 <button
                   key={r}
                   className={`ratio-chip ${globalResolution === r ? 'active' : ''}`}
@@ -693,67 +606,21 @@ export default function ImageGenerator({ apiKey }: Props) {
             </div>
           </div>
 
-          {/* Format (only if not GPT) */}
-          {globalModel !== 'gpt-image-2' && (
-            <div className="img-field">
-              <label>Формат</label>
-              <div className="ratio-chips">
-                {OUTPUT_FORMATS.map((f) => (
-                  <button
-                    key={f}
-                    className={`ratio-chip ${globalFormat === f ? 'active' : ''}`}
-                    onClick={() => setGlobalFormat(f)}
-                  >
-                    {f.toUpperCase()}
-                  </button>
-                ))}
-              </div>
+          {/* Format */}
+          <div className="img-field">
+            <label>Формат</label>
+            <div className="ratio-chips">
+              {OUTPUT_FORMATS.map((f) => (
+                <button
+                  key={f}
+                  className={`ratio-chip ${globalFormat === f ? 'active' : ''}`}
+                  onClick={() => setGlobalFormat(f)}
+                >
+                  {f.toUpperCase()}
+                </button>
+              ))}
             </div>
-          )}
-
-          {/* Reference History UUID (only if GPT) */}
-          {globalModel === 'gpt-image-2' && (
-            <div className="img-field" style={{ gridColumn: 'span 2' }}>
-              <label>UUID референса из истории (ref_history)</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="Вставьте UUID (например, c3d4e5f6-...)"
-                  value={globalRefHistory}
-                  onChange={(e) => setGlobalRefHistory(e.target.value)}
-                  style={{ flex: 1, fontSize: '0.85rem', padding: '6px 10px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#fff' }}
-                />
-                {tasks.filter(t => t.status === 'completed' && t.uuid).length > 0 && (
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setGlobalRefHistory(e.target.value);
-                        e.target.value = ''; // Reset select
-                      }
-                    }}
-                    style={{ maxWidth: '160px', fontSize: '0.8rem', padding: '6px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#fff' }}
-                    defaultValue=""
-                  >
-                    <option value="" disabled>Выбрать из готовых</option>
-                    {tasks.filter(t => t.status === 'completed' && t.uuid).map((t, index) => (
-                      <option key={t.id} value={t.uuid} style={{ background: '#222', color: '#fff' }}>
-                        #{index + 1}: {t.prompt.slice(0, 20)}... ({t.uuid?.slice(0, 8)})
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {globalRefHistory && (
-                  <button
-                    className="secondary danger"
-                    style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}
-                    onClick={() => setGlobalRefHistory('')}
-                  >
-                    Очистить
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </section>
 
@@ -1026,130 +893,38 @@ export default function ImageGenerator({ apiKey }: Props) {
                  {/* Compact settings row */}
                 <div className="img-card-settings" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '6px' }}>
                   <select
-                    value={task.model}
-                    onChange={(e) => {
-                      const val = e.target.value as ImageModel;
-                      updateTaskField(task.id, 'model', val);
-                      if (val === 'gpt-image-2') {
-                        updateTaskField(task.id, 'gptMode', 'medium');
-                        updateTaskField(task.id, 'resolution', '2K');
-                      } else {
-                        if (['21:9', '3:2', '2:3'].includes(task.aspectRatio)) {
-                          updateTaskField(task.id, 'aspectRatio', '1:1');
-                        }
-                        if (['8K', '10K', '12K'].includes(task.resolution)) {
-                          updateTaskField(task.id, 'resolution', '2K');
-                        }
-                      }
-                    }}
-                    disabled={!isEditable}
-                    className="img-card-select"
-                  >
-                    {IMAGE_MODELS.map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                  </select>
-
-                  {task.model === 'gpt-image-2' ? (
-                    <select
-                      value={task.gptMode || 'medium'}
-                      onChange={(e) => updateTaskField(task.id, 'gptMode', e.target.value as any)}
-                      disabled={!isEditable}
-                      className="img-card-select"
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                    </select>
-                  ) : (
-                    <select
-                      value={task.style}
-                      onChange={(e) => updateTaskField(task.id, 'style', e.target.value)}
-                      disabled={!isEditable}
-                      className="img-card-select"
-                    >
-                      {IMAGE_STYLES.map((s) => (
-                        <option key={s} value={s}>{s === 'None' ? 'Без стиля' : s}</option>
-                      ))}
-                    </select>
-                  )}
-
-                  <select
                     value={task.aspectRatio}
                     onChange={(e) => updateTaskField(task.id, 'aspectRatio', e.target.value)}
                     disabled={!isEditable}
                     className="img-card-select"
                   >
-                    {ASPECT_RATIOS.filter(r => task.model === 'gpt-image-2' || !['21:9', '3:2', '2:3'].includes(r.value)).map((r) => (
+                    {ASPECT_RATIOS.map((r) => (
                       <option key={r.value} value={r.value}>{r.icon} {r.label}</option>
                     ))}
                   </select>
 
-                  {task.model === 'gpt-image-2' && (
-                    <select
-                      value={task.resolution}
-                      onChange={(e) => updateTaskField(task.id, 'resolution', e.target.value as any)}
-                      disabled={!isEditable}
-                      className="img-card-select"
-                    >
-                      {RESOLUTIONS.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  )}
+                  <select
+                    value={task.resolution}
+                    onChange={(e) => updateTaskField(task.id, 'resolution', e.target.value as any)}
+                    disabled={!isEditable}
+                    className="img-card-select"
+                  >
+                    {RESOLUTIONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={task.outputFormat}
+                    onChange={(e) => updateTaskField(task.id, 'outputFormat', e.target.value)}
+                    disabled={!isEditable}
+                    className="img-card-select"
+                  >
+                    {OUTPUT_FORMATS.map((f) => (
+                      <option key={f} value={f}>{f.toUpperCase()}</option>
+                    ))}
+                  </select>
                 </div>
-
-                {/* ref_history UUID input if model is gpt-image-2 */}
-                {task.model === 'gpt-image-2' && isEditable && (
-                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 4px' }}>
-                    <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      🔗 UUID референса (ref_history)
-                    </label>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <input
-                        type="text"
-                        placeholder="Вставьте UUID..."
-                        value={task.refHistory || ''}
-                        onChange={(e) => updateTaskField(task.id, 'refHistory', e.target.value)}
-                        style={{ flex: 1, fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
-                      />
-                      {tasks.filter(t => t.status === 'completed' && t.uuid && t.id !== task.id).length > 0 && (
-                        <select
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              updateTaskField(task.id, 'refHistory', e.target.value);
-                              e.target.value = ''; // Reset select
-                            }
-                          }}
-                          style={{ maxWidth: '80px', fontSize: '0.7rem', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
-                          defaultValue=""
-                        >
-                          <option value="" disabled>Выбрать</option>
-                          {tasks.filter(t => t.status === 'completed' && t.uuid && t.id !== task.id).map((t, index) => (
-                            <option key={t.id} value={t.uuid} style={{ background: '#222', color: '#fff' }}>
-                              #{index + 1} ({t.uuid?.slice(0, 8)})
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                      {task.refHistory && (
-                        <button
-                          className="secondary danger"
-                          style={{ padding: '4px 6px', fontSize: '0.7rem' }}
-                          onClick={() => updateTaskField(task.id, 'refHistory', '')}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {task.model === 'gpt-image-2' && !isEditable && task.refHistory && (
-                  <div style={{ marginTop: '8px', padding: '0 4px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    🔗 ref_history: <code style={{ color: 'var(--accent-pink)' }}>{task.refHistory}</code>
-                  </div>
-                )}
 
                 {/* Reference image */}
                 <div className="img-card-ref">
