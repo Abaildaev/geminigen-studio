@@ -887,3 +887,180 @@ button.danger:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+/* ==================== RESPONSIVE DESIGN (MOBILE ADAPTATION) ==================== */
+
+/* Tablet & Mobile Screens */
+@media (max-width: 768px) {
+  .app-container {
+    padding: 20px 12px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .title-section h1 {
+    font-size: 1.8rem;
+    justify-content: center;
+  }
+
+  .api-settings {
+    margin-left: 0;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .api-settings > div {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  #apiKeyInput {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .tab-nav {
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px;
+    border-radius: 12px;
+  }
+
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+  }
+
+  .tab-btn.active {
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+  }
+
+  .tab-btn.active::after {
+    display: none;
+  }
+
+  /* Default settings grid controls */
+  .responsive-controls-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Panel Header responsiveness */
+  .panel-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .panel-header button {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  /* Control bars responsiveness */
+  .controls-bar {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .controls-group-right {
+    margin-left: 0 !important;
+    width: 100% !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .stats-group {
+    justify-content: center;
+    gap: 12px !important;
+    text-align: center;
+  }
+
+  .controls-bar button, 
+  .controls-group-right button {
+    width: 100% !important;
+  }
+
+  /* Video queue item responsiveness */
+  .video-task-row {
+    flex-wrap: wrap !important;
+    padding: 16px !important;
+    gap: 12px 8px !important;
+  }
+
+  .task-index {
+    order: 1;
+  }
+
+  .task-preview {
+    order: 2;
+  }
+
+  .task-filename-wrapper {
+    order: 3;
+    flex-grow: 1;
+    max-width: none !important;
+  }
+
+  .task-prompt-wrapper {
+    order: 4;
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: none !important;
+  }
+
+  .task-model-wrapper {
+    order: 5;
+    flex-grow: 1;
+    justify-content: flex-start !important;
+  }
+
+  .task-status-wrapper {
+    order: 6;
+    min-width: auto !important;
+  }
+
+  .task-actions-wrapper {
+    order: 7;
+    margin-left: auto;
+  }
+}
+
+/* Small Mobile Screens */
+@media (max-width: 480px) {
+  .drag-drop-zone {
+    padding: 24px 12px;
+  }
+
+  .drag-drop-zone p {
+    font-size: 0.95rem !important;
+  }
+
+  .img-tasks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .style-transfer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Style Transfer horizontal layouts to vertical stack */
+  .st-pair-container {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .st-pair-arrow {
+    transform: rotate(90deg);
+    margin: 6px auto !important;
+  }
+}
+

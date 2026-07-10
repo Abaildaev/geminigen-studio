@@ -590,7 +590,7 @@ export default function ImageGenerator({ apiKey }: Props) {
     <div>
       {/* GLOBAL SETTINGS PANEL */}
       <section className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+        <div className="panel-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <Wand2 size={20} style={{ color: 'var(--accent-pink)' }} />
           <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Настройки генерации по умолчанию</h2>
           <button
@@ -795,7 +795,7 @@ export default function ImageGenerator({ apiKey }: Props) {
       </section>
 
       {/* ADD TASKS CONTROLS */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div className="controls-bar" style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <button className="primary" onClick={addEmptyTask} style={{ fontSize: '0.85rem' }}>
           <Plus size={16} />
           Добавить задачу
@@ -818,8 +818,8 @@ export default function ImageGenerator({ apiKey }: Props) {
         </button>
 
         {tasks.length > 0 && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          <div className="controls-group-right" style={{ marginLeft: 'auto', display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div className="stats-group" style={{ display: 'flex', gap: '16px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               <span>Всего: <strong>{tasks.length}</strong></span>
               <span>В процессе: <strong style={{ color: 'var(--accent-purple)' }}>{activeCount}</strong></span>
               <span>Готово: <strong style={{ color: 'var(--success)' }}>{completedCount}</strong></span>

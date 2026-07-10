@@ -33,8 +33,9 @@ export default function App() {
   // Global defaults
   const [globalPrompt, setGlobalPrompt] = useState('Кинематографичное движение камеры вперед, реалистичное динамичное освещение, высокое качество');
   const [globalModel, setGlobalModel] = useState<AnimationTask['model']>('grok-3');
-  const [globalAspectRatio, setGlobalAspectRatio] = useState<'auto' | 'portrait' | 'landscape' | 'square'>('auto');
+  const [globalAspectRatio, setGlobalAspectRatio] = useState<'portrait' | 'landscape'>('landscape');
   const [globalDuration, setGlobalDuration] = useState<string>('10');
+  const [globalResolution, setGlobalResolution] = useState<string>('720p');
   
   // Queue controller state
   const [isProcessingAll, setIsProcessingAll] = useState(false);
@@ -81,10 +82,6 @@ export default function App() {
       if (ratio > 1.25) return 'landscape';
       if (ratio < 0.8) return 'portrait';
       return 'square';
-    } else if (model === 'omni-flash') {
-      if (ratio > 1.25) return '16:9';
-      if (ratio < 0.8) return '9:16';
-      return '1:1';
     } else {
       // veo-3.1-fast only supports 16:9
       return '16:9';
@@ -114,8 +111,6 @@ export default function App() {
         const img = new Image();
         img.src = previewUrl;
         img.onload = () => {
-          const detectedRatio = detectAspectRatio(img.width, img.height, globalModel);
-          
           resolve({
             id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
             file,
@@ -129,12 +124,12 @@ export default function App() {
               if (globalModel === 'veo-3.1-fast') {
                 return '16:9';
               }
-              if (globalAspectRatio === 'auto') return detectedRatio;
-              if (globalModel === 'grok-3') return globalAspectRatio;
-              return globalAspectRatio === 'portrait' ? '9:16' : globalAspectRatio === 'landscape' ? '16:9' : '1:1';
+              return globalAspectRatio;
             })(),
-            resolution: globalModel === 'grok-3' ? '720p' : '1080p',
-            duration: globalModel === 'grok-3' ? '6' : globalModel === 'omni-flash' ? globalDuration : '8',
+            resolution: globalModel === 'grok-3' 
+              ? (globalResolution === '480p' || globalResolution === '720p' ? globalResolution as any : '720p')
+              : (globalResolution === '1080p' ? '1080p' : '720p'),
+            duration: globalModel === 'grok-3' ? globalDuration : '8',
             status: 'idle',
             progress: 0
           });
@@ -157,9 +152,11 @@ export default function App() {
         if (field === 'model') {
           const model = value as AnimationTask['model'];
           updated.model = model;
-          updated.resolution = model === 'grok-3' ? '720p' : '1080p';
-          updated.duration = model === 'grok-3' ? '6' : model === 'omni-flash' ? globalDuration : '8';
-          updated.aspectRatio = detectAspectRatio(t.width, t.height, model);
+          updated.resolution = model === 'grok-3' 
+            ? (globalResolution === '480p' || globalResolution === '720p' ? globalResolution as any : '720p')
+            : '1080p';
+          updated.duration = model === 'grok-3' ? globalDuration : '8';
+          updated.aspectRatio = model === 'grok-3' ? globalAspectRatio : '16:9';
         }
         return updated;
       }
@@ -247,16 +244,8 @@ export default function App() {
     if (isGrok) {
       if (task.aspectRatio === '9:16' || task.aspectRatio === 'portrait') {
         normalizedRatio = 'portrait';
-      } else if (task.aspectRatio === '16:9' || task.aspectRatio === 'landscape') {
+      } else {
         normalizedRatio = 'landscape';
-      } else {
-        normalizedRatio = 'square';
-      }
-    } else if (task.model === 'omni-flash') {
-      if (task.aspectRatio === '9:16' || task.aspectRatio === 'portrait') {
-        normalizedRatio = '9:16';
-      } else {
-        normalizedRatio = '16:9';
       }
     } else {
       // veo-3.1, veo-3.1-fast, veo-3.1-lite only support 16:9
@@ -265,27 +254,27 @@ export default function App() {
     formData.append('aspect_ratio', normalizedRatio);
 
     if (isGrok) {
-      // Grok: resolution 720p, duration 6s, files для загрузки
-      formData.append('resolution', '720p');
-      formData.append('duration', '6');
+      // Grok: resolution 480p/720p, duration 6/10/15s, files для загрузки
+      formData.append('resolution', task.resolution || '720p');
+      formData.append('duration', task.duration || '10');
       formData.append('mode', 'custom');
       formData.append('files', task.file, task.fileName);
     } else {
-      // Veo/Omni: resolution 720p/1080p, duration 8s/4s/6s/10s, ref_images для загрузки
+      // Veo: resolution 720p/1080p, duration 8s, ref_images для загрузки
       formData.append('resolution', task.resolution || '720p');
-      formData.append('duration', task.duration || '8');
+      formData.append('duration', '8');
       formData.append('mode_image', 'frame');
       formData.append('ref_images', task.file, task.fileName);
     }
 
-    const endpoint = isGrok ? '/api/uapi/v1/video-gen/grok' : '/api-snapgen/uapi/v1/video-gen/veo';
+    const endpoint = isGrok ? '/api-snapgen/uapi/v1/video-gen/grok' : '/api-snapgen/uapi/v1/video-gen/veo';
     
     addLog(task.id, `Отправка запроса к API эндпоинту: ${endpoint}`);
     
     // Выводим отправленные ключи FormData для отладки
     const sentKeys = Array.from((formData as any).keys());
     addLog(task.id, `Отправленные поля FormData: ${sentKeys.join(', ')}`);
-    addLog(task.id, `Соотношение сторон: ${normalizedRatio}, разрешение: ${isGrok ? '720p' : task.resolution || '720p'}`);
+    addLog(task.id, `Соотношение сторон: ${normalizedRatio}, разрешение: ${task.resolution || '720p'}`);
     
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -332,10 +321,9 @@ export default function App() {
 
     addLog(taskId, `Запуск опроса статуса (каждые 5 сек) для UUID: ${uuid}`);
     
-    const isGrok = model === 'grok-3';
     const checkStatus = async () => {
       try {
-        const historyUrl = isGrok ? `/api/uapi/v1/history/${uuid}` : `/api-snapgen/uapi/v1/history/${uuid}`;
+        const historyUrl = `/api-snapgen/uapi/v1/history/${uuid}`;
         const response = await fetch(historyUrl, {
           headers: {
             'x-api-key': apiKey
@@ -650,8 +638,9 @@ export default function App() {
           {/* Quick Defaults */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: globalModel === 'omni-flash' ? '1fr 1fr 1fr' : '1fr 1fr', 
-            gap: '12px' 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+            gap: '12px',
+            width: '100%'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Модель по умолчанию</label>
@@ -661,50 +650,77 @@ export default function App() {
                   const val = e.target.value as any;
                   setGlobalModel(val);
                   if (val === 'veo-3.1-fast') {
-                    if (globalAspectRatio !== 'auto' && globalAspectRatio !== 'landscape') {
+                    if (globalAspectRatio !== 'landscape') {
                       setGlobalAspectRatio('landscape');
                     }
+                    setGlobalResolution('1080p');
+                    setGlobalDuration('8');
+                  } else {
+                    setGlobalResolution('720p');
+                    setGlobalDuration('10');
                   }
                 }}
                 style={{ width: '100%' }}
               >
-                <option value="grok-3">xAI Grok-3 (6s, 720p)</option>
-                <option value="veo-3.1-fast">Google Veo 3.1 Fast (8s, 720p/1080p)</option>
-                <option value="omni-flash">Omni Flash (4s-10s, 720p/1080p, 16:9/9:16)</option>
+                <option value="grok-3">Grok</option>
+                <option value="veo-3.1-fast">Veo 3.1</option>
               </select>
             </div>
-
-            {globalModel === 'omni-flash' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Длительность</label>
-                <select 
-                  value={globalDuration} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setGlobalDuration(val);
-                    setTasks(prev => prev.map(t => t.model === 'omni-flash' && (t.status === 'idle' || t.status === 'failed') ? { ...t, duration: val } : t));
-                  }}
-                  style={{ width: '100%' }}
-                >
-                  <option value="4">4 секунды</option>
-                  <option value="6">6 секунд</option>
-                  <option value="8">8 секунд</option>
-                  <option value="10">10 секунд</option>
-                </select>
-              </div>
-            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Формат сторон по умолчанию</label>
               <select 
                 value={globalAspectRatio} 
                 onChange={(e) => setGlobalAspectRatio(e.target.value as any)}
+                disabled={globalModel === 'veo-3.1-fast'}
                 style={{ width: '100%' }}
               >
-                <option value="auto">Авто (по размеру файла)</option>
                 <option value="portrait">Вертикальный (Grok: portrait / Veo: 9:16)</option>
                 <option value="landscape">Горизонтальный (Grok: landscape / Veo: 16:9)</option>
-                <option value="square">Квадратный (Grok: square / Veo: 1:1)</option>
+              </select>
+            </div>
+
+            {globalModel === 'grok-3' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Длительность по умолчанию</label>
+                <select 
+                  value={globalDuration} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setGlobalDuration(val);
+                    setTasks(prev => prev.map(t => t.model === 'grok-3' && (t.status === 'idle' || t.status === 'failed') ? { ...t, duration: val } : t));
+                  }}
+                  style={{ width: '100%' }}
+                >
+                  <option value="6">6 секунд</option>
+                  <option value="10">10 секунд</option>
+                  <option value="15">15 секунд</option>
+                </select>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Разрешение по умолчанию</label>
+              <select 
+                value={globalResolution} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setGlobalResolution(val);
+                  setTasks(prev => prev.map(t => (t.status === 'idle' || t.status === 'failed') ? { ...t, resolution: val as any } : t));
+                }}
+                style={{ width: '100%' }}
+              >
+                {globalModel === 'grok-3' ? (
+                  <>
+                    <option value="480p">480p</option>
+                    <option value="720p">720p</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="720p">720p</option>
+                    <option value="1080p">1080p</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
@@ -775,15 +791,15 @@ export default function App() {
 
         {/* BULK ACTION CONTROLS */}
         {tasks.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '16px' }}>
-            <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <div className="controls-bar" style={{ marginTop: '24px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '16px' }}>
+            <div className="stats-group">
               <span>Всего элементов: <strong>{tasks.length}</strong></span>
               <span>В процессе: <strong style={{ color: 'var(--accent-purple)' }}>{activeGenerationsCount}</strong></span>
               <span>Готово: <strong style={{ color: 'var(--success)' }}>{completedCount}</strong></span>
               {failedCount > 0 && <span style={{ color: 'var(--danger)' }}>С ошибкой: <strong>{failedCount}</strong></span>}
             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="controls-group-right">
               <button 
                 className="secondary danger" 
                 onClick={clearQueue}
@@ -872,7 +888,7 @@ export default function App() {
             return (
               <div 
                 key={task.id} 
-                className="glass-panel" 
+                className="glass-panel video-task-row" 
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -888,7 +904,7 @@ export default function App() {
                 }}
               >
                 {/* Номер кадра */}
-                <span style={{ 
+                <span className="task-index" style={{ 
                   fontSize: '0.75rem', 
                   fontWeight: 700, 
                   color: 'var(--text-muted)', 
@@ -900,6 +916,7 @@ export default function App() {
 
                 {/* Мини-превью */}
                 <div 
+                  className="task-preview"
                   onClick={() => setLightbox({
                     url: hasVideo ? task.videoUrl! : task.previewUrl,
                     type: hasVideo ? 'video' : 'image',
@@ -970,7 +987,7 @@ export default function App() {
                 </div>
 
                 {/* Имя файла и размер */}
-                <div style={{ minWidth: '120px', maxWidth: '150px', flexShrink: 0, overflow: 'hidden' }}>
+                <div className="task-filename-wrapper" style={{ minWidth: '120px', maxWidth: '150px', flexShrink: 0, overflow: 'hidden' }}>
                   <div style={{ 
                     fontSize: '0.8rem', 
                     fontWeight: 600, 
@@ -986,7 +1003,7 @@ export default function App() {
                 </div>
 
                 {/* Промпт — основное поле, занимает доступное пространство */}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="task-prompt-wrapper" style={{ flex: 1, minWidth: 0 }}>
                   <textarea
                     rows={2}
                     value={task.prompt}
@@ -1008,7 +1025,8 @@ export default function App() {
                 </div>
 
                 {/* Модель — компактный селектор */}
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+                <div className="task-model-wrapper" style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* Модель */}
                   <div style={{ minWidth: '85px' }}>
                     <select
                       value={task.model}
@@ -1024,41 +1042,107 @@ export default function App() {
                         color: 'var(--text-primary)',
                         cursor: isEditable ? 'pointer' : 'default'
                       }}
+                      title="Модель"
                     >
-                      <option value="grok-3">Grok-3</option>
-                      <option value="veo-3.1-fast">Veo 3.1 Fast</option>
-                      <option value="omni-flash">Omni Flash</option>
+                      <option value="grok-3">Grok</option>
+                      <option value="veo-3.1-fast">Veo 3.1</option>
                     </select>
                   </div>
 
-                  {task.model === 'omni-flash' && (
-                    <div style={{ minWidth: '55px' }}>
-                      <select
-                        value={task.duration || '10'}
-                        onChange={(e) => updateTaskField(task.id, 'duration', e.target.value)}
-                        disabled={!isEditable}
-                        style={{ 
-                          fontSize: '0.7rem', 
-                          padding: '4px 6px', 
-                          width: '100%',
-                          background: isEditable ? 'rgba(255,255,255,0.06)' : 'transparent',
-                          border: isEditable ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
-                          borderRadius: '4px',
-                          color: 'var(--text-primary)',
-                          cursor: isEditable ? 'pointer' : 'default'
-                        }}
-                      >
-                        <option value="4">4s</option>
-                        <option value="6">6s</option>
+                  {/* Формат сторон */}
+                  <div style={{ minWidth: '70px' }}>
+                    <select
+                      value={task.aspectRatio}
+                      onChange={(e) => updateTaskField(task.id, 'aspectRatio', e.target.value as any)}
+                      disabled={!isEditable || task.model === 'veo-3.1-fast'}
+                      style={{ 
+                        fontSize: '0.7rem', 
+                        padding: '4px 6px', 
+                        width: '100%',
+                        background: isEditable && task.model !== 'veo-3.1-fast' ? 'rgba(255,255,255,0.06)' : 'transparent',
+                        border: isEditable && task.model !== 'veo-3.1-fast' ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        cursor: isEditable && task.model !== 'veo-3.1-fast' ? 'pointer' : 'default'
+                      }}
+                      title="Соотношение сторон"
+                    >
+                      {task.model === 'veo-3.1-fast' ? (
+                        <option value="16:9">16:9</option>
+                      ) : (
+                        <>
+                          <option value="landscape">16:9 (Гор.)</option>
+                          <option value="portrait">9:16 (Верт.)</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Длительность */}
+                  <div style={{ minWidth: '55px' }}>
+                    <select
+                      value={task.duration}
+                      onChange={(e) => updateTaskField(task.id, 'duration', e.target.value)}
+                      disabled={!isEditable || task.model === 'veo-3.1-fast'}
+                      style={{ 
+                        fontSize: '0.7rem', 
+                        padding: '4px 6px', 
+                        width: '100%',
+                        background: isEditable && task.model !== 'veo-3.1-fast' ? 'rgba(255,255,255,0.06)' : 'transparent',
+                        border: isEditable && task.model !== 'veo-3.1-fast' ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        cursor: isEditable && task.model !== 'veo-3.1-fast' ? 'pointer' : 'default'
+                      }}
+                      title="Длительность"
+                    >
+                      {task.model === 'veo-3.1-fast' ? (
                         <option value="8">8s</option>
-                        <option value="10">10s</option>
-                      </select>
-                    </div>
-                  )}
+                      ) : (
+                        <>
+                          <option value="6">6s</option>
+                          <option value="10">10s</option>
+                          <option value="15">15s</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Разрешение */}
+                  <div style={{ minWidth: '65px' }}>
+                    <select
+                      value={task.resolution}
+                      onChange={(e) => updateTaskField(task.id, 'resolution', e.target.value as any)}
+                      disabled={!isEditable}
+                      style={{ 
+                        fontSize: '0.7rem', 
+                        padding: '4px 6px', 
+                        width: '100%',
+                        background: isEditable ? 'rgba(255,255,255,0.06)' : 'transparent',
+                        border: isEditable ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                        borderRadius: '4px',
+                        color: 'var(--text-primary)',
+                        cursor: isEditable ? 'pointer' : 'default'
+                      }}
+                      title="Разрешение"
+                    >
+                      {task.model === 'grok-3' ? (
+                        <>
+                          <option value="480p">480p</option>
+                          <option value="720p">720p</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="720p">720p</option>
+                          <option value="1080p">1080p</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Статус */}
-                <div style={{ flexShrink: 0, minWidth: '90px', textAlign: 'center' }}>
+                <div className="task-status-wrapper" style={{ flexShrink: 0, minWidth: '90px', textAlign: 'center' }}>
                   <div className={`status-badge ${task.status}`} style={{ fontSize: '0.7rem', padding: '3px 8px' }}>
                     {getStatusLabel(task.status)}
                   </div>
@@ -1102,7 +1186,7 @@ export default function App() {
                 </div>
 
                 {/* Действия */}
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                <div className="task-actions-wrapper" style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                   {hasVideo && (
                     <a 
                       href={task.videoUrl} 

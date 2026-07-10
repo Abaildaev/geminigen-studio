@@ -7,11 +7,11 @@ export interface AnimationTask {
   height: number;
   
   // Generation parameters
-  model: 'grok-3' | 'veo-3.1-fast' | 'omni-flash';
+  model: 'grok-3' | 'veo-3.1-fast';
   prompt: string;
-  aspectRatio: 'portrait' | 'landscape' | 'square' | '9:16' | '16:9' | '1:1';
-  resolution: '720p' | '1080p';
-  duration: string; // "6" for grok
+  aspectRatio: 'portrait' | 'landscape' | '9:16' | '16:9';
+  resolution: '480p' | '720p' | '1080p';
+  duration: string; // "6", "10", "15" for grok, "8" for veo
   
   // Task status
   status: 'idle' | 'submitting' | 'polling' | 'completed' | 'failed';
