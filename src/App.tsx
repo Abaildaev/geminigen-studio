@@ -34,7 +34,6 @@ export default function App() {
   const [globalPrompt, setGlobalPrompt] = useState('Кинематографичное движение камеры вперед, реалистичное динамичное освещение, высокое качество');
   const [globalModel, setGlobalModel] = useState<AnimationTask['model']>('grok-3');
   const [globalAspectRatio, setGlobalAspectRatio] = useState<'portrait' | 'landscape'>('landscape');
-  const [globalDuration, setGlobalDuration] = useState<string>('10');
   const [globalResolution, setGlobalResolution] = useState<string>('720p');
   
   // Queue controller state
@@ -129,7 +128,7 @@ export default function App() {
             resolution: globalModel === 'grok-3' 
               ? (globalResolution === '480p' || globalResolution === '720p' ? globalResolution as any : '720p')
               : (globalResolution === '1080p' ? '1080p' : '720p'),
-            duration: globalModel === 'grok-3' ? globalDuration : '8',
+            duration: globalModel === 'grok-3' ? '6' : '8',
             status: 'idle',
             progress: 0
           });
@@ -155,7 +154,7 @@ export default function App() {
           updated.resolution = model === 'grok-3' 
             ? (globalResolution === '480p' || globalResolution === '720p' ? globalResolution as any : '720p')
             : '1080p';
-          updated.duration = model === 'grok-3' ? globalDuration : '8';
+          updated.duration = model === 'grok-3' ? '6' : '8';
           updated.aspectRatio = model === 'grok-3' ? globalAspectRatio : '16:9';
         }
         return updated;
@@ -654,10 +653,8 @@ export default function App() {
                       setGlobalAspectRatio('landscape');
                     }
                     setGlobalResolution('1080p');
-                    setGlobalDuration('8');
                   } else {
                     setGlobalResolution('720p');
-                    setGlobalDuration('10');
                   }
                 }}
                 style={{ width: '100%' }}
@@ -679,25 +676,6 @@ export default function App() {
                 <option value="landscape">Горизонтальный (Grok: landscape / Veo: 16:9)</option>
               </select>
             </div>
-
-            {globalModel === 'grok-3' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Длительность по умолчанию</label>
-                <select 
-                  value={globalDuration} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setGlobalDuration(val);
-                    setTasks(prev => prev.map(t => t.model === 'grok-3' && (t.status === 'idle' || t.status === 'failed') ? { ...t, duration: val } : t));
-                  }}
-                  style={{ width: '100%' }}
-                >
-                  <option value="6">6 секунд</option>
-                  <option value="10">10 секунд</option>
-                  <option value="15">15 секунд</option>
-                </select>
-              </div>
-            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Разрешение по умолчанию</label>
@@ -1073,36 +1051,6 @@ export default function App() {
                         <>
                           <option value="landscape">16:9 (Гор.)</option>
                           <option value="portrait">9:16 (Верт.)</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* Длительность */}
-                  <div style={{ minWidth: '55px' }}>
-                    <select
-                      value={task.duration}
-                      onChange={(e) => updateTaskField(task.id, 'duration', e.target.value)}
-                      disabled={!isEditable || task.model === 'veo-3.1-fast'}
-                      style={{ 
-                        fontSize: '0.7rem', 
-                        padding: '4px 6px', 
-                        width: '100%',
-                        background: isEditable && task.model !== 'veo-3.1-fast' ? 'rgba(255,255,255,0.06)' : 'transparent',
-                        border: isEditable && task.model !== 'veo-3.1-fast' ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
-                        borderRadius: '4px',
-                        color: 'var(--text-primary)',
-                        cursor: isEditable && task.model !== 'veo-3.1-fast' ? 'pointer' : 'default'
-                      }}
-                      title="Длительность"
-                    >
-                      {task.model === 'veo-3.1-fast' ? (
-                        <option value="8">8s</option>
-                      ) : (
-                        <>
-                          <option value="6">6s</option>
-                          <option value="10">10s</option>
-                          <option value="15">15s</option>
                         </>
                       )}
                     </select>
