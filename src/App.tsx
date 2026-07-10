@@ -74,19 +74,6 @@ export default function App() {
     };
   }, []);
 
-  // Detect image aspect ratio automatically
-  const detectAspectRatio = (width: number, height: number, model: string): any => {
-    const ratio = width / height;
-    if (model === 'grok-3') {
-      if (ratio > 1.25) return 'landscape';
-      if (ratio < 0.8) return 'portrait';
-      return 'square';
-    } else {
-      // veo-3.1-fast only supports 16:9
-      return '16:9';
-    }
-  };
-
   // Handle file uploading — загружаем все файлы параллельно, но добавляем в стейт строго по порядку
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
     let files: FileList | null = null;
@@ -311,7 +298,7 @@ export default function App() {
   };
 
   // Poll Task Status until finished
-  const startPolling = (taskId: string, uuid: string, model: string) => {
+  const startPolling = (taskId: string, uuid: string, _model: string) => {
     if (activePolls.current[taskId]) {
       clearInterval(activePolls.current[taskId]);
     }

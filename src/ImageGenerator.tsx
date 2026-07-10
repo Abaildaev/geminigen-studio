@@ -26,9 +26,7 @@ import type {
   ImageResolution,
 } from './types';
 
-const IMAGE_MODELS: { value: ImageModel; label: string; desc: string }[] = [
-  { value: 'nano-banana-pro', label: 'Nano Banana Pro', desc: 'Высокая точность, "мыслящая" модель' },
-];
+
 
 const ASPECT_RATIOS: { value: ImageAspectRatio; label: string; icon: string }[] = [
   { value: '1:1', label: '1:1', icon: '⬜' },
