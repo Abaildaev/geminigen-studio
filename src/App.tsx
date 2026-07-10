@@ -119,12 +119,7 @@ export default function App() {
             height: img.height,
             model: globalModel,
             prompt: globalPrompt || 'Реалистичное движение, высокое качество',
-            aspectRatio: (() => {
-              if (globalModel === 'veo-3.1-fast') {
-                return '16:9';
-              }
-              return globalAspectRatio;
-            })(),
+            aspectRatio: globalAspectRatio,
             resolution: globalModel === 'grok-3' 
               ? (globalResolution === '480p' || globalResolution === '720p' ? globalResolution as any : '720p')
               : (globalResolution === '1080p' ? '1080p' : '720p'),
@@ -155,7 +150,7 @@ export default function App() {
             ? (globalResolution === '480p' || globalResolution === '720p' ? globalResolution as any : '720p')
             : '1080p';
           updated.duration = model === 'grok-3' ? '6' : '8';
-          updated.aspectRatio = model === 'grok-3' ? globalAspectRatio : '16:9';
+          updated.aspectRatio = globalAspectRatio;
         }
         return updated;
       }
@@ -247,8 +242,11 @@ export default function App() {
         normalizedRatio = 'landscape';
       }
     } else {
-      // veo-3.1, veo-3.1-fast, veo-3.1-lite only support 16:9
-      normalizedRatio = '16:9';
+      if (task.aspectRatio === '9:16' || task.aspectRatio === 'portrait') {
+        normalizedRatio = '9:16';
+      } else {
+        normalizedRatio = '16:9';
+      }
     }
     formData.append('aspect_ratio', normalizedRatio);
 
@@ -649,9 +647,6 @@ export default function App() {
                   const val = e.target.value as any;
                   setGlobalModel(val);
                   if (val === 'veo-3.1-fast') {
-                    if (globalAspectRatio !== 'landscape') {
-                      setGlobalAspectRatio('landscape');
-                    }
                     setGlobalResolution('1080p');
                   } else {
                     setGlobalResolution('720p');
@@ -669,7 +664,6 @@ export default function App() {
               <select 
                 value={globalAspectRatio} 
                 onChange={(e) => setGlobalAspectRatio(e.target.value as any)}
-                disabled={globalModel === 'veo-3.1-fast'}
                 style={{ width: '100%' }}
               >
                 <option value="portrait">Вертикальный (Grok: portrait / Veo: 9:16)</option>
@@ -1032,27 +1026,21 @@ export default function App() {
                     <select
                       value={task.aspectRatio}
                       onChange={(e) => updateTaskField(task.id, 'aspectRatio', e.target.value as any)}
-                      disabled={!isEditable || task.model === 'veo-3.1-fast'}
+                      disabled={!isEditable}
                       style={{ 
                         fontSize: '0.7rem', 
                         padding: '4px 6px', 
                         width: '100%',
-                        background: isEditable && task.model !== 'veo-3.1-fast' ? 'rgba(255,255,255,0.06)' : 'transparent',
-                        border: isEditable && task.model !== 'veo-3.1-fast' ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                        background: isEditable ? 'rgba(255,255,255,0.06)' : 'transparent',
+                        border: isEditable ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
                         borderRadius: '4px',
                         color: 'var(--text-primary)',
-                        cursor: isEditable && task.model !== 'veo-3.1-fast' ? 'pointer' : 'default'
+                        cursor: isEditable ? 'pointer' : 'default'
                       }}
                       title="Соотношение сторон"
                     >
-                      {task.model === 'veo-3.1-fast' ? (
-                        <option value="16:9">16:9</option>
-                      ) : (
-                        <>
-                          <option value="landscape">16:9 (Гор.)</option>
-                          <option value="portrait">9:16 (Верт.)</option>
-                        </>
-                      )}
+                      <option value="landscape">16:9 (Гор.)</option>
+                      <option value="portrait">9:16 (Верт.)</option>
                     </select>
                   </div>
 
